@@ -1,4 +1,6 @@
+# install:
 python -m venv venv
+# launch:
 .\venv\Scripts\activate
 
 https://github.com/microsoft/autogen

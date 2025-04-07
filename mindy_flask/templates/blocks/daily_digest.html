@@ -1,0 +1,29 @@
+<div class="card shadow rounded-4">
+    <div class="card-body">
+      <h5 class="card-title">📚 Daily Digest</h5>
+      <form method="POST" action="{{ url_for('refresh_digest') }}">
+        <div class="input-group mb-2">
+          <label class="input-group-text">主題</label>
+          <select name="topic" class="form-select">
+            {% for key, label in topics.items() %}
+              <option value="{{ key }}" {% if selected_topic == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-primary">🔄 重新整理</button>
+        </div>
+      </form>
+  
+      {% if headlines %}
+        <ul class="list-group list-group-flush">
+          {% for item in headlines %}
+            <li class="list-group-item">
+              <a href="{{ item.url }}" target="_blank">{{ item.title }}</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-muted">尚未讀取資料</p>
+      {% endif %}
+    </div>
+  </div>
+  
