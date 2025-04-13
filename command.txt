@@ -1,12 +1,13 @@
 # install:
 python -m venv venv
+
 # launch:
 .\venv\Scripts\activate
 
 https://github.com/microsoft/autogen
 
-pip install -U autogen-agentchat autogen-ext[openai,web-surfer] python-dotenv
-pip install autogen-agentchat python-dotenv playwright
+
+pip install -U autogen-agentchat autogen-ext[openai,web-surfer] python-dotenv playwright
 playwright install
 
 pip install -U autogenstudio

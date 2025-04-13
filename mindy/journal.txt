@@ -1,0 +1,5 @@
+1. google新聞抓取: https://jamleecute.web.app/%E7%B6%B2%E8%B7%AF%E7%88%AC%E8%9F%B2-web-crawler-text-mining-python/#google_vignette
+    可以看一下如何轉換url的部分
+    目前摘要的問題還沒解決(url)
+2. interview: 先創建一個對話機器人，然後輸出成csv檔案，最後打開pdf生成，生成分析表格
+    `python mindy_flask/models/interview_analysis.py` 可以直接開，現在就是要透過點擊打開頁面

@@ -36,7 +36,7 @@ The project aims to unify AI agents, automation tools, and a responsive dashboar
 
 ## ⚙️ Technologies Used
 
-- **Frontend:** HTML, Bootstrap 5, JavaScript (optional charting via Chart.js / Plotly)
+- **Frontend:** HTML, Bootstrap , JavaScript
 - **Backend:** Flask (Python)
 - **AI Agent:** AutoGen (multi-role interaction)
 - **Automation:** Playwright (browser crawling/login)

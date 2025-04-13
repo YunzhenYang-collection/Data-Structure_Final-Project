@@ -1,0 +1,18 @@
+<form method="POST">
+    <div class="form-group">
+        <label for="user_input">面試情境</label>
+        <textarea id="user_input" name="user_input" class="form-control" placeholder="請輸入面試情境..." rows="3"></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">開始面試</button>
+</form>
+
+{% if feedback %}
+    <h3>AI 回應:</h3>
+    <p>{{ feedback }}</p>
+    <!-- 按鈕觸發生成 CSV 逐字稿 -->
+    <form method="POST" action="{{ url_for('generate_transcript') }}">
+        <input type="hidden" name="user_input" value="{{ user_input }}">
+        <input type="hidden" name="ai_feedback" value="{{ feedback }}">
+        <button type="submit" class="btn btn-success">產生逐字稿 (CSV)</button>
+    </form>
+{% endif %}

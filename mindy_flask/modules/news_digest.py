@@ -26,7 +26,7 @@ def fetch_news_by_topic(topic_key):
 
         try:
             elements = page.locator("h3 > a")
-            for el in elements.all()[:5]:
+            for el in elements.all()[:15]:
                 text = el.text_content()
                 href = el.get_attribute("href")
                 if text and href:
