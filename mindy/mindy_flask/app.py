@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, send_file, jsonify
 # from mindy_backend.models.daily import get_news_by_category, summarize_news
 from models.daliy import get_news_by_category, summarize_news
-from models.interview import save_transcript_to_csv, interview_practice_logic
+from models.interview import interview_practice_logic, save_transcript_to_csv
 from models.interview_analysis import gradio_handler
 
 
