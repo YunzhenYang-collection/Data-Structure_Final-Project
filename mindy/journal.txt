@@ -3,3 +3,4 @@
     目前摘要的問題還沒解決(url)
 2. interview: 先創建一個對話機器人，然後輸出成csv檔案，最後打開pdf生成，生成分析表格
     `python mindy_flask/models/interview_analysis.py` 可以直接開，現在就是要透過點擊打開頁面
+    修改app.py中 analysus.py的函數呼叫
