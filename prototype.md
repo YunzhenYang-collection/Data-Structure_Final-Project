@@ -1,4 +1,4 @@
-# Project Proposal: MINDY — Mindful Intelligent Navigator for Daily You
+# Project Prototype: MINDY — Mindful Intelligent Navigator for Daily You
 
 ---
 
