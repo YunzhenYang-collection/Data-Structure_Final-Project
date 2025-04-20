@@ -1,18 +1,134 @@
-<form method="POST">
-    <div class="form-group">
-        <label for="user_input">面試情境</label>
-        <textarea id="user_input" name="user_input" class="form-control" placeholder="請輸入面試情境..." rows="3"></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary">開始面試</button>
-</form>
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面試模擬器</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        .chat-box {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            height: 400px;
+            overflow-y: scroll;
+        }
+        .chat-message {
+            background: #e2e6ea;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+        .input-box {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .input-box input {
+            width: 80%;
+            border-radius: 25px;
+            padding: 10px;
+        }
+        .input-box button {
+            margin-left: 10px;
+            border-radius: 25px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>模擬面試</h1>
 
-{% if feedback %}
-    <h3>AI 回應:</h3>
-    <p>{{ feedback }}</p>
-    <!-- 按鈕觸發生成 CSV 逐字稿 -->
-    <form method="POST" action="{{ url_for('generate_transcript') }}">
-        <input type="hidden" name="user_input" value="{{ user_input }}">
-        <input type="hidden" name="ai_feedback" value="{{ feedback }}">
-        <button type="submit" class="btn btn-success">產生逐字稿 (CSV)</button>
-    </form>
-{% endif %}
+        <!-- 職位與面試類型選擇表單 -->
+        <form action="{{ url_for('interview') }}" method="POST">
+            <div class="form-group">
+                <label for="job_title">職位</label>
+                <select class="form-control" id="job_title" name="job_title" required>
+                    <option value="軟體工程師">軟體工程師</option>
+                    <option value="資料科學家">資料科學家</option>
+                    <option value="行銷專員">行銷專員</option>
+                    <!-- 你可以根據需求添加其他職位 -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="interview_type">面試類型</label>
+                <select class="form-control" id="interview_type" name="interview_type" required>
+                    <option value="一般面試">一般面試</option>
+                    <option value="行為面試">行為面試</option>
+                    <option value="技術面試">技術面試</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">開始模擬面試</button>
+        </form>
+
+        <div class="chat-box" id="chat-box">
+            <!-- 聊天訊息顯示區域 -->
+        </div>
+
+        <div class="input-box">
+            <input type="text" id="user-input" placeholder="請輸入您的回答..." />
+            <button onclick="endInterview()">結束</button>
+            <button onclick="importCSV()">匯入 CSV</button>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestionIndex = 0;
+        const questions = {{ questions | tojson }}; // 從Flask後端傳遞問題列表
+
+        function addMessage(message, isUser = false) {
+            const chatBox = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = 'chat-message';
+            div.style.textAlign = isUser ? 'right' : 'left';
+            div.textContent = message;
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function handleUserInput() {
+            const userInput = document.getElementById('user-input').value;
+            if (userInput.trim()) {
+                addMessage(userInput, true);
+                document.getElementById('user-input').value = '';
+
+                // 模擬面試回答
+                if (currentQuestionIndex < questions.length) {
+                    addMessage(questions[currentQuestionIndex]);
+                    currentQuestionIndex++;
+                } else {
+                    addMessage("模擬面試結束，謝謝您的參與！");
+                }
+            }
+        }
+
+        function endInterview() {
+            addMessage("面試結束，感謝您的參與！");
+            document.getElementById('user-input').disabled = true;
+        }
+
+        function importCSV() {
+            // 處理匯入CSV邏輯
+            alert("匯入CSV功能尚未實作！");
+        }
+
+        // 初始顯示第一個問題
+        addMessage(questions[currentQuestionIndex]);
+        currentQuestionIndex++;
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleUserInput();
+            }
+        });
+    </script>
+</body>
+</html>

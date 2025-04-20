@@ -1,23 +1,25 @@
-/mindy_js
-  /static
-    /css         # 自定義的 CSS 樣式
-    /js          # JavaScript 文件
-  /templates
-    index.html   # 主 dashboard 頁面
-    login.html   # 登入頁面
-
-
+ 
 /mindy_flask
   /templates    
     login.html   # 登入頁面模板
+    index.html   # 主 dashboard 頁面
+    login.html   # 登入頁面
+    interview.html 
   /static
     /css         # 前端樣式
-    /js          # 前端 JS (例如，處理動態操作)
-      
-  /app.py        # 主要的 Flask 應用程式檔案，負責路由和邏輯
+    /js          # 前端 JS (例如，處理動態操作)      
+  app.py        # 主要的 Flask 應用程式檔案，負責路由和邏輯
   /models
       user.py      # 用戶模型，儲存用戶認證及資料
       reminders.py # 提醒模型，儲存任務和提醒
       daliy.py     # 抓取新聞模型
+      interview.py # 面試對話前端頁面
+      interview_analysis.py # 對話分析頁面以及匯出PDF檔案
+      interview_chat.py # 對話機器人
+    
     /config.py     # 資料庫配置
-    /routes.py     # API 路由和視圖
+
+/pdf_report
+  report_{datetime}.pdf # 分析後產生的pdf檔案
+/reference
+  # 面試以後的csv檔案

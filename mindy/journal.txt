@@ -2,5 +2,12 @@
     可以看一下如何轉換url的部分
     目前摘要的問題還沒解決(url)
 2. interview: 先創建一個對話機器人，然後輸出成csv檔案，最後打開pdf生成，生成分析表格
-    `python mindy_flask/models/interview_analysis.py` 可以直接開，現在就是要透過點擊打開頁面
-    修改app.py中 analysus.py的函數呼叫
+    `python mindy_flask/models/interview_analysis.py` 可以直接開，現在就是改成要透過點擊打開頁面
+        =>Grdio 和 Flask 可能有衝突，解決方法可能是用`EMO`的方法去上傳並且分析
+    修改app.py中 analysis.py的函數呼叫    
+    (V)interview_chat.py 使用 gemini串接聊天機器人，現在的問題就是要串起來:可以打開分業，但點擊"進入面試場地"會報錯
+    layout基本完成了，但是面試問題傳不到前端
+
+3. 參考網站
+    AutoGen 探索：串接常見的 LLM 模型與自建 API 伺服器:
+    https://xiaosean5408.medium.com/autogen-%E6%8E%A2%E7%B4%A2-%E4%B8%B2%E6%8E%A5%E5%B8%B8%E8%A6%8B%E7%9A%84-llm-%E6%A8%A1%E5%9E%8B%E8%88%87%E8%87%AA%E5%BB%BA-api-%E4%BC%BA%E6%9C%8D%E5%99%A8-fbe972bd4588

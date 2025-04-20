@@ -49,7 +49,7 @@ def fetch_news_by_topic(topic_key):
         page = browser.new_page()
         page.goto(url)
         page.goto(url, timeout=60000, wait_until='load')  # 增加超時時間並等待頁面加載完成
-        page.wait_for_timeout(2000)  # 等待頁面加載
+        page.wait_for_timeout(6000)  # 等待頁面加載
 
         try:
             elements = page.locator("h3 > a")
