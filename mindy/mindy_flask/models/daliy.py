@@ -49,7 +49,8 @@ def fetch_news_by_topic(topic_key):
         page = browser.new_page()
         page.goto(url)
         page.goto(url, timeout=60000, wait_until='load')  # 增加超時時間並等待頁面加載完成
-        page.wait_for_timeout(6000)  # 等待頁面加載
+        page.wait_for_timeout(6000)  # 等待頁面加載       
+               
 
         try:
             elements = page.locator("h3 > a")
@@ -74,14 +75,17 @@ def get_news_by_category(category):
     return fetch_news_by_topic(category)
 
 # 直接根據類別同步取得新聞
-def summarize_news(news_items):
+async def summarize_news(news_items):
     summarized_news = []
 
     for news in news_items:
         try:
             # 解析 HTML 內容
             soup = BeautifulSoup(news['content'], 'html.parser')
-            
+
+            # 打印 HTML 結構以便調試
+            print(soup.prettify())  # 這樣可以檢查 HTML 是否正確解析
+
             # 提取文章標題
             title = soup.find('h2')  # 假設標題位於 <h2> 標籤中
             title = title.text.strip() if title else "無標題"
@@ -90,42 +94,93 @@ def summarize_news(news_items):
             time = soup.find('time')  # 假設時間位於 <time> 標籤中
             time = time.text.strip() if time else "未知時間"
 
-            # 提取文章內容
-            paragraphs = soup.find_all('p')  # 假設內容位於 <p> 標籤中
-            content = " ".join([p.text.strip() for p in paragraphs])
+            # 確保 <div class="caas-body"> 存在
+            caas_body = soup.find('div', class_='caas-body')
+            if caas_body:
+                paragraphs = caas_body.find_all('p')
+                content = " ".join([p.text.strip() for p in paragraphs if p.text.strip()])
+                
+                # 確保抓到 content 並打印
+                if content:
+                    print(f"成功抓取到內容: {content}")
+                else:
+                    print("content 為空，未能抓取到有效內容")
+                    raise ValueError("未抓取到文章內容")
+            else:
+                print("未找到 <div class='caas-body'> 標籤")
+                raise ValueError("無法獲取文章內容")
 
-            # 使用 Gemini 生成摘要
-            summary = summarize_article(content)
+            # 用 Playwright 加載頁面並處理交互
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)  # 或 headless=False 來顯示瀏覽器
+                page = browser.new_page()
 
-            summarized_news.append({
-                "title": title,
-                "summary": summary,
-                "time": time,
-                "link": news["url"]
-            })
+                # 加載頁面
+                await page.goto(news['url'])  # 加載新聞頁面
+
+                # 等待頁面加載完成
+                await page.wait_for_selector('div.caas-body', timeout=30000)  # 等待 caas-body 出現，最多等30秒
+
+                # 點擊摘要按鈕
+                await page.click('#summary-btn')  # 假設按鈕有 id 'summary-btn'
+
+                # 獲取內容
+                caas_body = await page.locator('div.caas-body').text_content()
+
+                # 使用 Gemini 生成摘要
+                summary = await summarize_article(content)  # 使用 await 等待異步結果
+
+                # 檢查是否有 url 欄位
+                url = news.get("url", "無連結")  # 如果沒有 url，設為 "無連結"
+
+                summarized_news.append({
+                    "title": title,
+                    "summary": summary,
+                    "time": time,
+                    "link": url
+                })
+                browser.close()  # 關閉瀏覽器
+
         except Exception as e:
             print(f"生成摘要時發生錯誤：{e}")
             summarized_news.append({
-                "title": news["title"],
+                "title": news.get("title", "無標題"),
                 "summary": "無法生成摘要",
                 "time": "未知時間",
-                "link": news.get("url", "無連結")
+                "link": "無連結"
             })
 
     return summarized_news
 
-def summarize_article(content):
+
+async def summarize_article(content):
     """利用 gemini 生成摘要"""
     try:
-        # 使用 AutoGen 的 create 方法生成聊天回應，不帶 model 參數
-        response = summarizer.create(
+        # 使用 AutoGen 的 create 方法生成聊天回應
+        response = await summarizer.create(
             messages=[
-                {"role": "system", "content": "你是一個新聞摘要助手，請將以下內容簡短地概括為一句摘要："},
+                {"role": "system", "content": "你是一個新聞摘要助手，請閱讀新聞內容以後提取有用的資訊做成一段5句話以內的摘要："},
                 {"role": "user", "content": content}
             ]
         )
-        summary = response["choices"][0]["message"]["content"]
-        return summary.strip() if summary else "無摘要"
+
+        # 打印返回的 response 以便調試
+        print(f"生成摘要的 response: {response}")
+
+        # 確保返回格式正確並提取摘要
+        if isinstance(response, dict):
+            # 如果返回的是字典類型，嘗試處理它
+            if "choices" in response and len(response["choices"]) > 0:
+                summary = response["choices"][0].get("message", {}).get("content", "")
+                if summary:
+                    return summary.strip()
+                else:
+                    return "摘要內容為空"
+            else:
+                return "無法生成摘要，未找到有效的選擇"
+        else:
+            return "返回的格式不正確"
+
     except Exception as e:
         print(f"生成摘要時發生錯誤：{e}")
         return "無摘要"

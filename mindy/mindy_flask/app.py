@@ -6,6 +6,7 @@ from models.daliy import get_news_by_category, summarize_news
 # import gradio as gr
 from models.interview_chat import get_interview_questions, simulate_interview, analyze_answer, save_transcript_to_csv
 import os
+import asyncio
 
 # In[0]:設定模板目錄為 'mindy_js/templates'
 # app = Flask(__name__, template_folder='templates', static_folder='mindy_flask/static')
@@ -29,14 +30,15 @@ def get_daily_digest():
     return jsonify(news_list)  # 返回新聞標題和連結
 
 @app.route('/get_news_summary', methods=['GET'])
-def get_news_summary():
+async def get_news_summary():
     title = request.args.get('title', '')  # 獲取前端傳來的標題
     if title:
         # 假設 summarize_news 函式已經從標題生成摘要
-        summary_data = summarize_news([{"title": title, "content": "這是文章內容"}])
+        summary_data = await summarize_news([{"title": title, "content": "這是文章內容"}])  # 使用 await 等待結果
         return jsonify({"summary": summary_data[0]["summary"]})
     else:
         return jsonify({"summary": "未提供標題"})
+
 
 # In[2]:Interview: 
 @app.route('/interview', methods=['GET', 'POST'])
