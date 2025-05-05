@@ -12,3 +12,7 @@ The final project of TAHRD data structure course, which about AI, data analysis 
 ### Presentation 2 :  Checkpoint I
 - Slides:  [![present](https://github.com/user-attachments/assets/c0a9faab-ff80-459f-8980-a55475515b1d)](https://www.canva.com/design/DAGkCPTGSmo/jOpRsjgmPDAL4CMXmRgD6Q/edit?utm_content=DAGkCPTGSmo&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 - Youtube: [![youtube](https://github.com/user-attachments/assets/c8c1ee67-36d8-40e3-a461-a77c50c40546)](https://youtu.be/Pjx4xH7yrRE)
+
+- ### Presentation 3 :  Checkpoint II
+- Slides:  [![present](https://github.com/user-attachments/assets/c0a9faab-ff80-459f-8980-a55475515b1d)](https://www.canva.com/design/DAGmlsrv_GI/G6JzMiXTeMNQCHaqMfDVkw/edit?utm_content=DAGmlsrv_GI&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
+- Youtube: [![youtube](https://github.com/user-attachments/assets/c8c1ee67-36d8-40e3-a461-a77c50c40546)](https://youtu.be/kjWxW58oR74)
