@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import pandas as pd
 from fpdf import FPDF
+import gradio as gr
+
 
 # 載入環境變數並設定 API 金鑰
 dotenv_path = os.path.join(os.getcwd(), ".env")
@@ -171,3 +173,17 @@ def create_table(pdf: FPDF, df: pd.DataFrame):
             pdf.multi_cell(col_widths[i], cell_height, text, border=1, align="L", fill=True)
         
         pdf.ln(cell_height)
+'''
+# Gradio 介面
+with gr.Blocks() as demo:
+    gr.Markdown("# 面試對話分析")
+    with gr.Row():
+        csv_input = gr.File(label="上傳 面試對話 CSV 檔案")
+        user_input = gr.Textbox(label="請輸入分析指令", lines=10, value=default_prompt)
+    output_text = gr.Textbox(label="回應內容", interactive=False)
+    output_pdf = gr.File(label="下載 PDF 報表")
+    submit_button = gr.Button("生成報表")
+    submit_button.click(fn=gradio_handler, inputs=[csv_input, user_input], outputs=[output_text, output_pdf])
+
+demo.launch()
+'''

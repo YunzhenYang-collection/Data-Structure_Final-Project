@@ -127,13 +127,14 @@ def simulate_interview(selected_questions, user_answer_callback):
     responses = []
     while question_index < len(selected_questions):
         interviewer_question = selected_questions[question_index]
-        # 這裡會調用用戶回應的callback
         user_answer = user_answer_callback(interviewer_question)
         
         if user_answer.lower() == '結束':
             break
         
         response = chat.send_message(f"{user_answer}\n\n請以中文回答。")
+        print(f"Question: {interviewer_question}")
+        print(f"Response: {response.text}")  # 打印模型回應
         responses.append({"question": interviewer_question, "response": response.text})
         question_index += 1
     return responses

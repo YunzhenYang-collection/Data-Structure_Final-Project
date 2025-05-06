@@ -7,6 +7,7 @@ from autogen_agentchat.messages import TextMessage
 # from autogen_ext.agents.web_surfer import MultimodalWebSurfer
 import asyncio
 from playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
 # 載入 .env 檔案中的環境變數
@@ -78,60 +79,40 @@ def get_news_by_category(category):
 async def summarize_news(news_items):
     summarized_news = []
 
-    for news in news_items:
-        try:
-            # 解析 HTML 內容
-            soup = BeautifulSoup(news['content'], 'html.parser')
+    async with async_playwright() as p:
+        for news in news_items:
+            url = news.get('url')
+            if not url:
+                print(f"跳過無 URL 的新聞: {news}")
+                continue  # 如果沒有 URL，跳過該新聞
 
-            # 打印 HTML 結構以便調試
-            print(soup.prettify())  # 這樣可以檢查 HTML 是否正確解析
+            try:
+                # 使用 Playwright 加載頁面
+                browser = await p.chromium.launch(headless=True)  # headless=True 不顯示瀏覽器界面
+                page = await browser.new_page()
 
-            # 提取文章標題
-            title = soup.find('h2')  # 假設標題位於 <h2> 標籤中
-            title = title.text.strip() if title else "無標題"
+                # 進入新聞頁面
+                await page.goto(url, timeout=60000, wait_until='domcontentloaded')  # 等待頁面加載
 
-            # 提取發佈時間
-            time = soup.find('time')  # 假設時間位於 <time> 標籤中
-            time = time.text.strip() if time else "未知時間"
+                # 等待 caas-body 元素加載完成
+                await page.wait_for_selector('div.caas-body', timeout=30000)
 
-            # 確保 <div class="caas-body"> 存在
-            caas_body = soup.find('div', class_='caas-body')
-            if caas_body:
-                paragraphs = caas_body.find_all('p')
-                content = " ".join([p.text.strip() for p in paragraphs if p.text.strip()])
-                
-                # 確保抓到 content 並打印
-                if content:
-                    print(f"成功抓取到內容: {content}")
+                # 抓取 caas-body 內的所有 <p> 標籤內容
+                paragraphs = await page.locator('div.caas-body p').all_text_contents()
+
+                # 確保抓取到內容
+                if paragraphs:
+                    print(f"成功抓取到內容：{paragraphs}")
                 else:
                     print("content 為空，未能抓取到有效內容")
-                    raise ValueError("未抓取到文章內容")
-            else:
-                print("未找到 <div class='caas-body'> 標籤")
-                raise ValueError("無法獲取文章內容")
+                    paragraphs = ["無法抓取內容"]
 
-            # 用 Playwright 加載頁面並處理交互
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)  # 或 headless=False 來顯示瀏覽器
-                page = browser.new_page()
+                # 將抓取的段落合併成摘要
+                summary = " ".join(paragraphs[:5])  # 假設取前5段作為摘要
 
-                # 加載頁面
-                await page.goto(news['url'])  # 加載新聞頁面
-
-                # 等待頁面加載完成
-                await page.wait_for_selector('div.caas-body', timeout=30000)  # 等待 caas-body 出現，最多等30秒
-
-                # 點擊摘要按鈕
-                await page.click('#summary-btn')  # 假設按鈕有 id 'summary-btn'
-
-                # 獲取內容
-                caas_body = await page.locator('div.caas-body').text_content()
-
-                # 使用 Gemini 生成摘要
-                summary = await summarize_article(content)  # 使用 await 等待異步結果
-
-                # 檢查是否有 url 欄位
-                url = news.get("url", "無連結")  # 如果沒有 url，設為 "無連結"
+                # 提取標題和時間
+                title = news.get("title", "無標題")
+                time = news.get("time", "未知時間")
 
                 summarized_news.append({
                     "title": title,
@@ -139,16 +120,17 @@ async def summarize_news(news_items):
                     "time": time,
                     "link": url
                 })
-                browser.close()  # 關閉瀏覽器
 
-        except Exception as e:
-            print(f"生成摘要時發生錯誤：{e}")
-            summarized_news.append({
-                "title": news.get("title", "無標題"),
-                "summary": "無法生成摘要",
-                "time": "未知時間",
-                "link": "無連結"
-            })
+                await browser.close()  # 關閉瀏覽器
+
+            except Exception as e:
+                print(f"生成摘要時發生錯誤：{e}")
+                summarized_news.append({
+                    "title": news.get("title", "無標題"),
+                    "summary": "無法生成摘要",
+                    "time": "未知時間",
+                    "link": url
+                })
 
     return summarized_news
 

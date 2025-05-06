@@ -65,6 +65,25 @@
             height: 100%;
         }
 
+        .saving-jar-container {
+            display: flex;
+            flex-direction: column;  /* 讓按鈕和卡片垂直排列 */
+            gap: 1rem;  /* 讓按鈕和卡片之間有一些間距 */
+        }
+
+        .saving-goal-card {
+            display: none;  /* 預設隱藏新卡片 */
+            flex-direction: column;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            background-color: #f0f4f8;
+        }
+
+        .progress {
+            margin-top: 10px;
+        }
+
         @media (max-width: 768px) {
             .dashboard-container {
                 grid-template-columns: 1fr;
@@ -100,10 +119,9 @@
                 <div class="card">
                     <div class="card-header">Interview Coach</div>
                     <div class="card-body">
-                        <!-- 使用 a 標籤來開啟新分頁 -->
-                        
-                        
-                        <a href="{{ url_for('interview') }}" class="btn btn-primary" target="_blank">開始模擬面試</a>
+                        <!-- 使用 a 標籤來開啟新分頁 -->                                             
+                        <!--a href="{{ url_for('interview') }}" class="btn btn-primary" target="_blank">開始模擬面試</a-->
+                        <a href="{{ url_for('interview_mcp') }}" class="btn btn-primary" target="_blank">開始模擬面試</a>
                         <br><br>
                         <a href="{{ url_for('gradio_analysis') }}" class="btn btn-primary" target="_blank">開始面試分析</a>
                     </div>
@@ -111,13 +129,48 @@
                 <div class="card">
                     <div class="card-header">Student Assistant</div>
                     <div class="card-body">
-                        <p>學生助手功能將顯示在這裡。</p>
+                        <p>學生助手功能</p>
                     </div>
                 </div>
+                
                 <div class="card">
                     <div class="card-header">Saving Jar</div>
                     <div class="card-body">
-                        <p>儲蓄目標進度會在這裡顯示。</p>
+                        <div class="saving-jar-container">
+                            <button class="btn btn-outline-primary" id="add-saving-goal-btn">+ 新增儲蓄目標</button>
+                            
+                            <!-- 表單 -->
+                            <div id="saving-goal-form" style="display:none;">
+                                <form id="saving-goal-form">
+                                    <label for="goal">儲蓄目的</label>
+                                    <input type="text" id="goal" class="form-control mb-3" placeholder="儲蓄目的" required>
+                                    <label for="start-date">起始日期</label>
+                                    <input type="date" id="start-date" class="form-control mb-3" required>
+                                    <label for="end-date">結束日期</label>
+                                    <input type="date" id="end-date" class="form-control mb-3" required>
+                                    <label for="goal-amount">目標金額</label>
+                                    <input type="number" id="goal-amount" class="form-control mb-3" placeholder="目標金額" required>
+                                    <button type="submit" class="btn btn-success mt-3">確定</button>
+                                </form>
+                            </div>
+                        </div>
+                
+                        <!-- 儲蓄目標卡片 -->
+                        <div id="new-saving-goal-card" class="saving-goal-card">
+                            <div class="card-header"><span id="goal-header"></span></div> <!-- 動態顯示儲蓄目的 -->
+                            <div class="card-body">
+                                <p id="goal-summary"></p>
+                                <p id="start-date-summary"></p>
+                                <p id="end-date-summary"></p>
+                                <p id="goal-amount-summary"></p>
+                                <p id="daily-contribution-summary"></p>
+                                <p id="current-amount-summary">目前金額: 0</p>
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <button class="btn btn-warning mt-3" onclick="modifyCurrentAmount(this)">修改目前金額</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -211,6 +264,78 @@
                     console.error('Error fetching summary:', error);
                 });
         }
+       
     </script>
+    
+    <script>
+        // 當按下“新增儲蓄目標”按鈕時顯示表單
+        document.getElementById('add-saving-goal-btn').addEventListener('click', function() {
+            document.getElementById('saving-goal-form').style.display = 'block';
+        });
+    
+        // 處理表單提交
+        document.getElementById('saving-goal-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+    
+            // 收集表單資料
+            const goal = document.getElementById('goal').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const goalAmount = document.getElementById('goal-amount').value;
+    
+            // 計算每日投入金額
+            const dailyContribution = calculateDailyContribution(goalAmount, startDate, endDate);
+    
+            // 顯示儲蓄目標卡片
+            const newCard = document.createElement('div');
+            newCard.classList.add('saving-goal-card');
+            newCard.style.display = 'flex';  // 顯示新卡片
+    
+            // 填充卡片內容
+            newCard.innerHTML = `
+                <div class="card-header"><span>${goal}</span></div> <!-- 顯示儲蓄目的 -->
+                <div class="card-body">
+                    <p>儲蓄目的: ${goal}</p>
+                    <p>起始日期: ${startDate}</p>
+                    <p>結束日期: ${endDate}</p>
+                    <p>目標金額: ${goalAmount}</p>
+                    <p>每日投入金額: ${dailyContribution}</p>
+                    <p id="current-amount-summary">目前金額: 0</p>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                    <button class="btn btn-warning mt-3" onclick="modifyCurrentAmount(this)">修改目前金額</button>
+                </div>
+            `;
+            
+            // 將新卡片添加到右側區域
+            document.querySelector('.saving-jar-container').appendChild(newCard);
+    
+            // 隱藏表單
+            document.getElementById('saving-goal-form').style.display = 'none';
+        });
+    
+        // 計算每日投入金額
+        function calculateDailyContribution(goalAmount, startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const days = Math.floor((end - start) / (1000 * 60 * 60 * 24)); // 計算日期差
+            return (goalAmount / days).toFixed(2); // 計算每日投入金額
+        }
+    
+        // 修改目前金額
+        function modifyCurrentAmount(button) {
+            const currentAmount = prompt("請輸入新的目前金額:");
+            if (currentAmount !== null) {
+                button.closest('.saving-goal-card').querySelector('#current-amount-summary').textContent = `目前金額: ${currentAmount}`;
+                
+                // 更新進度條
+                const goalAmount = parseFloat(button.closest('.saving-goal-card').querySelector('p:nth-child(4)').textContent.split(':')[1].trim());
+                const progressPercentage = (parseFloat(currentAmount) / goalAmount) * 100;
+                button.closest('.saving-goal-card').querySelector('.progress-bar').style.width = `${progressPercentage}%`;
+            }
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>    
 </body>
 </html>

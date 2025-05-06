@@ -16,10 +16,11 @@
       interview.py # 面試對話前端頁面
       interview_analysis.py # 對話分析頁面以及匯出PDF檔案
       interview_chat.py # 對話機器人
-    
-    /config.py     # 資料庫配置
+      
 
 /pdf_report
   report_{datetime}.pdf # 分析後產生的pdf檔案
 /reference
   # 面試以後的csv檔案
+
+/.env # API金鑰; 資料庫配置

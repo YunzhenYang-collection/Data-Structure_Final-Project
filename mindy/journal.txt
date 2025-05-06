@@ -7,6 +7,7 @@
     修改app.py中 analysis.py的函數呼叫    
     (V)interview_chat.py 使用 gemini串接聊天機器人，現在的問題就是要串起來:可以打開分業，但點擊"進入面試場地"會報錯
     layout基本完成了，但是面試問題傳不到前端
+    改用mcp實作
 
 3. 參考網站
     AutoGen 探索：串接常見的 LLM 模型與自建 API 伺服器:

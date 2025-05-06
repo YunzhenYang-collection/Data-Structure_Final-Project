@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模擬面試機器人</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        .chat-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+        }
+        .chat-message {
+            background: #e2e6ea;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
+        .responses-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            height: 400px;
+            overflow-y: scroll;
+            border: 1px solid #ddd;
+        }
+        .input-box {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+        .input-box input {
+            width: 80%;
+            border-radius: 25px;
+            padding: 10px;
+        }
+        .input-box button {
+            margin-left: 10px;
+            border-radius: 25px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+        }
+        .col-md-6 {
+            width: 48%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>歡迎使用模擬面試機器人!</h1>
+        <form action="/interview_mcp" method="POST">
+            <div class="mb-3">
+                <label for="job_title" class="form-label">選擇職位</label>
+                <input type="text" class="form-control" id="job_title" name="job_title" placeholder="例如：軟體工程師">
+            </div>
+            <div class="mb-3">
+                <label for="interview_type" class="form-label">選擇面試類型</label>
+                <select class="form-select" id="interview_type" name="interview_type">
+                    <option value="一般面試">一般面試</option>
+                    <option value="行為面試">行為面試</option>
+                    <option value="技術面試">技術面試</option>
+                </select>
+            </div>
+
+            <!-- 顯示問題及回答區域 -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="chat-box" id="chat-box">
+                        <!-- 面試問題與用戶回答 -->
+                        {% for question in questions %}
+                            <div class="chat-message"><strong>問題：</strong>{{ question }}</div>
+                            <div class="chat-message"><strong>您的回答：</strong><textarea class="form-control" name="answer_{{ question }}" rows="3"></textarea></div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="responses-box" id="responses-box">
+                        <h3>面試回答與分析</h3>
+                        <ul id="responses-list">
+                            {% for response in responses %}
+                                <li class="chat-message">
+                                    <strong>問題：</strong>{{ response['question'] }}<br>
+                                    <strong>回應：</strong>{{ response['response'] }}<br>
+                                    <strong>分析：</strong>{{ response['analysis'] }}<br>
+                                    <strong>建議：</strong>{{ response['advice'] }}<br>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提交按鈕 -->
+            <div class="input-box">
+                <button type="submit" class="btn btn-primary">提交面試回答</button>
+            </div>
+        </form>
+
+        <!-- 顯示 AI 回應區 -->
+        {% if ai_reply %}
+            <div class="mt-4">
+                <h4>AI 回應：</h4>
+                <p>{{ ai_reply }}</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // 在這裡添加 JavaScript（如果有需要）
+    </script>
+</body>
+</html>
