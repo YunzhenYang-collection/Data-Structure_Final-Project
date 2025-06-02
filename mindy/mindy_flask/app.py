@@ -30,8 +30,8 @@ if os.path.exists(env_file_path):
 else:
     print(".env file not found.")
 
-gemini_key = os.getenv("GEMINI_API_KEY")
-print("GEMINI_API_KEY:", gemini_key)
+# gemini_key = os.getenv("GEMINI_API_KEY")
+# print("GEMINI_API_KEY:", gemini_key)
     
 # DB config
 
@@ -121,6 +121,8 @@ class GeminiChatCompletionClient:
 
 
 from models.interview_mcp import handle_chat # AI Agent 聊天函式 interface
+from models.interview_mcp import agent1, agent2, parse_agent_history, save_transcript_to_csv
+from flask import send_file
 
 # 建立 Gemini chat client
 # model_client = GeminiChatCompletionClient(model)
@@ -143,40 +145,14 @@ def interview_chat():
         return jsonify({'reply': f"⚠️ 發生錯誤：{str(e)}", 'analysis': ''})
 
 
-@app.route('/generate_transcript', methods=['POST'])
-def generate_transcript():
-    user_input = request.form['user_input']  # 用戶的面試情境
-    ai_feedback = "這是 AI 的回應"  # 假設這是AI的回應，實際應該根據用戶的回答來生成
-    # 儲存面試內容為 CSV
-    csv_path = save_transcript_to_csv(user_input, ai_feedback)
-    
-    # 返回 CSV 文件以供下載
-    # return send_file(csv_path, as_attachment=True)
-    return send_file(csv_path, as_attachment=True, download_name=os.path.basename(csv_path))
+@app.route('/download_interview_csv')
+def download_interview_csv():
+    history1 = parse_agent_history(agent1.history)
+    history2 = parse_agent_history(agent2.history)
+    all_history = history1 + history2
+    csv_path = save_transcript_to_csv(all_history)
+    return send_file(csv_path, as_attachment=True)
 
-'''
-@app.route('/analyze_interview', methods=['GET'])
-def analyze_interview():
-    return render_template('analyze_interview.html')  # 渲染分析頁面
-'''
-'''
-@app.route('/gradio_analysis', methods=['GET', 'POST'])
-def gradio_analysis():
-    # 這個路由會觸發 Gradio 界面的顯示
-    with gr.Blocks() as demo:
-        gr.Markdown("# 面試對話分析")
-        with gr.Row():
-            csv_input = gr.File(label="上傳 面試對話 CSV 檔案")
-            user_input = gr.Textbox(label="請輸入分析指令", lines=10)
-        output_text = gr.Textbox(label="回應內容", interactive=False)
-        output_pdf = gr.File(label="下載 PDF 報表")
-        submit_button = gr.Button("生成報表")
-        submit_button.click(fn=gradio_handler, inputs=[csv_input, user_input], outputs=[output_text, output_pdf])
-    
-    demo.launch(server_name="127.0.0.1", server_port=7860, share=False)  # 確保這個端口是可控的
-    return "Gradio 介面正在啟動..."  # 你可以根據需要自定義這個回應
-
-'''
 #In[2]:Interview Analysis:
 
 @app.route('/gradio_analysis', methods=['GET', 'POST'])

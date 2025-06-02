@@ -3,6 +3,8 @@ import os
 import asyncio
 from dotenv import load_dotenv
 from google.genai import client as genai_client
+import csv
+from datetime import datetime
 
 load_dotenv()
 
@@ -77,3 +79,40 @@ def handle_chat(user_message: str) -> tuple[str, str]:
     analysis = run_async(agent2.act(reply))
 
     return reply, analysis
+
+def parse_agent_history(agent_history):
+    """
+    把 agent1.history 或 agent2.history 轉成 List[Dict] 格式
+    """
+    result = []
+    for msg in agent_history:
+        if msg.startswith("[system] "):
+            role = "system"
+            content = msg[len("[system] "):]
+        elif msg.startswith("[user] "):
+            role = "user"
+            content = msg[len("[user] "):]
+        elif msg.startswith("[ai_coach] "):
+            role = "ai_coach"
+            content = msg[len("[ai_coach] "):]
+        elif msg.startswith("[analysis_expert] "):
+            role = "analysis_expert"
+            content = msg[len("[analysis_expert] "):]
+        else:
+            role = "unknown"
+            content = msg
+        result.append({"role": role, "content": content})
+    return result
+
+def save_transcript_to_csv(history, folder_path="interview_record"):
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    csv_output_path = os.path.join(
+        folder_path, f"transcript_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    )
+    with open(csv_output_path, mode='w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["序號", "角色", "內容"])
+        for idx, msg in enumerate(history, 1):
+            writer.writerow([idx, msg.get('role', ''), msg.get('content', '')])
+    return csv_output_path
