@@ -1,6 +1,6 @@
 # Data-Structure_Final-Project
 The final project of TAHRD data structure course, which about AI, data analysis and application.
-- [Course Repo.]()
+- #### Course Repo Link: [![github-logo](https://github.com/user-attachments/assets/1f81ff1c-16c0-40f2-8595-5a1225d25835)](https://github.com/YunzhenYang-collection/Data-Structure/tree/main)
 
 - Code : [Folder](https://github.com/YunzhenYang-collection/Data-Structure_Final-Project/tree/main/mindy/mindy_flask)
 ### Project Theme : Personal self-improvement assistant
