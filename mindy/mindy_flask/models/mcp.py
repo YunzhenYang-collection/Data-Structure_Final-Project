@@ -1,49 +1,39 @@
-# mcp.py
+# models/mcp.py
 import os
 import asyncio
-from config import DEFAULT_MODEL, MODEL_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY, HF_API_KEY
+import time
+from dotenv import load_dotenv
+from google.genai import client as genai_client
 
-# ✅ 載入不同 Provider 的 LLM client
-from google import genai
-import openai
-import requests
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY 未設定於環境變數")
 
 class ModelClient:
-    def __init__(self, model=DEFAULT_MODEL, provider=MODEL_PROVIDER):
+    def __init__(self, model="gemini-2.5-pro-exp-03-25"):
         self.model = model
-        self.provider = provider
-        if provider == 'gemini':
-            self.client = genai.Client(api_key=GEMINI_API_KEY)
-        elif provider == 'openai':
-            openai.api_key = OPENAI_API_KEY
-        elif provider == 'hf':
-            self.client = HF_API_KEY  # just save token
-        else:
-            raise ValueError(f"Unsupported provider: {provider}")
+        self.client = genai_client.Client(api_key=GEMINI_API_KEY)
 
-    async def generate(self, messages: list):
+    async def generate(self, messages: list, retry=5, base_delay=5):
         content = "\n".join(messages)
-        if self.provider == 'gemini':
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=content
-            )
-            return response.text.strip()
-        elif self.provider == 'openai':
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=[{"role": "user", "content": content}]
-            )
-            return response.choices[0].message.content.strip()
-        elif self.provider == 'hf':
-            url = f"https://api-inference.huggingface.co/models/{self.model}"
-            headers = {"Authorization": f"Bearer {self.client}"}
-            payload = {"inputs": content}
-            r = requests.post(url, headers=headers, json=payload)
-            r.raise_for_status()
-            return r.json()[0]['generated_text'].strip()
-        else:
-            raise ValueError("Invalid model provider")
+        for attempt in range(retry):
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=content
+                )
+                return response.text.strip()
+            except Exception as e:
+                if "RESOURCE_EXHAUSTED" in str(e):
+                    delay = base_delay * (2 ** attempt)  # 指數退避
+                    print(f"配額超限，等待 {delay} 秒後重試 {attempt+1}/{retry}")
+                    await asyncio.sleep(delay)
+                else:
+                    raise
+        raise RuntimeError("多次重試後仍無法完成請求")
+
 
 class ContextManager:
     def __init__(self):
@@ -53,20 +43,22 @@ class ContextManager:
         self.history.append(f"[{role}] {content}")
 
     def get_context(self):
-        return [msg for msg in self.history]
+        return list(self.history)
 
 class ProtocolAgent:
     def __init__(self, name, role, model_client: ModelClient):
         self.name = name
         self.role = role
         self.model_client = model_client
-        self.context_manager = ContextManager()  # ✅ 每個 Agent 自己有上下文
+        self.context_manager = ContextManager()
 
     async def act(self, input_text):
         self.context_manager.add_message(self.role, input_text)
         context = self.context_manager.get_context()
-        response = await self.model_client.generate(context)
+        try:
+            response = await self.model_client.generate(context)
+        except Exception as e:
+            print(f"[{self.name}] 呼叫失敗：{e}")
+            response = f"⚠️ 請求失敗：{e}"
         self.context_manager.add_message(self.name, response)
         return response
-
-# ✅ 以上三個 Class 定義完畢

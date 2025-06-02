@@ -1,17 +1,20 @@
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, url_for, send_from_directory
 import threading
 from models.daliy import fetch_news_by_topic, get_news_by_category, summarize_news
-# from models.interview import save_transcript_to_csv
+from models.interview import save_transcript_to_csv
 from models.interview_analysis import gradio_handler,  generate_pdf  
+from werkzeug.utils import secure_filename
+# from models.interview_analysis_html import analyze_interview 
 # import gradio as gr
 from models.interview_chat import get_interview_questions, simulate_interview, analyze_answer, save_transcript_to_csv
 from flask_mysqldb import MySQL
 import os
 from dotenv import load_dotenv
 import asyncio
-from models.interview_mcp import process_interview_answer, run_multiagent_analysis
+# from models.interview_mcp import process_interview_answer, run_multiagent_analysis
 import google.generativeai as genai
-from models.mcp import ProtocolAgent  
+# from models.mcp import ProtocolAgent 
+from models.reminders import get_all_reminders, add_reminder, delete_reminder
 
 # In[0]:Initialization:
 load_dotenv()
@@ -26,6 +29,9 @@ if os.path.exists(env_file_path):
     print(f".env path: {env_file_path}")
 else:
     print(".env file not found.")
+
+gemini_key = os.getenv("GEMINI_API_KEY")
+print("GEMINI_API_KEY:", gemini_key)
     
 # DB config
 
@@ -36,6 +42,7 @@ DB_NAME = os.getenv("DB_NAME")
 
 db_host = os.getenv("DB_HOST")
 print(f"DB_HOST：{db_host}")
+
 
 
 @app.route('/')
@@ -53,6 +60,9 @@ def get_daily_digest():
     news_list = [{"title": news["title"], "link": news["url"]} for news in news_items]
 
     return jsonify(news_list)  # 返回新聞標題和連結
+
+
+
 
 @app.route('/get_news_summary', methods=['GET'])
 async def get_news_summary():
@@ -77,68 +87,28 @@ async def get_news_summary():
 
 
 # In[2]:Interview: 
-@app.route('/interview', methods=['GET', 'POST'])
-def interview():
-    selected_questions = []  # 初始設置為空列表
-    responses = []  # 用來儲存面試過程中的回應
-    job_title = ''  # 設定默認為空字串
-    interview_type = ''  # 設定默認為空字串
 
-    if request.method == 'POST':
-        job_title = request.form['job_title'].lower().replace(" ", "_")
-        interview_type = request.form['interview_type'].lower()
-
-        print("job_title:", job_title)
-        print("interview_type:", interview_type)
-
-        # 根據職位與面試類型選擇問題
-        selected_questions = get_interview_questions(job_title, interview_type)
-
-        # 若返回的是空值或無效的問題列表，設為空列表
-        if selected_questions is None:
-            selected_questions = []
-
-        # 這裡會從前端表單提交中收集用戶的回答
-        def user_answer_callback(question):
-            # 從表單中收集用戶的回答
-            return request.form.get(f"answer_{question}", "")  # 假設前端會提交 "answer_question" 的字段
-
-
-        # 模擬面試
-        responses = simulate_interview(selected_questions, user_answer_callback)
-
-        # 如果需要對回答進行分析，則調用 analyze_answer 函數進行分析
-        for response in responses:
-            response['analysis'] = analyze_answer(response['question'], response['response'])
-
-    # 渲染模板並傳遞問題、回應和選擇的職位與面試類型
-    return render_template('interview.html', questions=selected_questions, responses=responses, job_title=job_title, interview_type=interview_type)
-
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-#print(GEMINI_API_KEY)
-
-# ✅ 建立 Gemini 客戶端與模型
-client = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+# 建立模型實例
+model = genai.GenerativeModel('gemini-2.5-pro-exp-03-25')
 
 # ✅ 封裝 autogen client
 class GeminiChatCompletionClient:
-    def __init__(self, model="gemini-1.5-flash-8b"):
-        self.model = model
+    def __init__(self, model_instance=None):
+        # 預設用外部 model 實例，也可以自訂
+        self.model = model_instance if model_instance else genai.GenerativeModel('gemini-1.5-flash-8b')
         self.model_info = {"vision": False}
 
     async def create(self, messages, **kwargs):
         parts = []
         for m in messages:
+            # 支援 dict 或物件格式
             if hasattr(m, 'content'):
                 parts.append(str(m.content))
             elif isinstance(m, dict) and 'content' in m:
                 parts.append(str(m['content']))
         content = "\n".join(parts)
-        response = client.models.generate_content(
-            model=self.model,
-            contents=content
-        )
+        # ⚠️ generate_content() 不是 async，這裡你要考慮用 ThreadPoolExecutor 包起來，否則直接呼叫會變同步
+        response = self.model.generate_content(content)
         return type("Response", (), {
             "text": response.text,
             "content": response.text,
@@ -148,45 +118,29 @@ class GeminiChatCompletionClient:
             }
         })
 
-model_client = GeminiChatCompletionClient()
 
-@app.route('/interview_mcp', methods=['GET', 'POST'])
-def interview_mcp():
-    selected_questions = []  # 初始設置為空列表
-    responses = []  # 用來儲存面試過程中的回應
-    job_title = ''  # 設定默認為空字串
-    interview_type = ''  # 設定默認為空字串
 
-    if request.method == 'POST':
-        job_title = request.form['job_title'].lower().replace(" ", "_")  # 獲取職位
-        interview_type = request.form['interview_type'].lower()  # 獲取面試類型
+from models.interview_mcp import handle_chat # AI Agent 聊天函式 interface
 
-        # 根據職位與面試類型選擇問題
-        selected_questions = get_interview_questions(job_title, interview_type)
+# 建立 Gemini chat client
+# model_client = GeminiChatCompletionClient(model)
 
-        # 若返回的是空值或無效的問題列表，設為空列表
-        if selected_questions is None:
-            selected_questions = []
+@app.route('/interview')
+def interview():
+    return render_template('interview_mcp.html')
 
-        # 定義用戶回答的回調函數
-        def user_answer_callback(question):
-            # 從表單中收集用戶的回答
-            return request.form.get(f"answer_{question}", "")  # 假設前端會提交 "answer_question" 的字段
+@app.route('/interview/chat', methods=['POST'])
+def interview_chat():
+    data = request.get_json()
+    user_msg = data.get('message', '').strip()
+    if not user_msg:
+        return jsonify({'reply': '', 'analysis': ''})
 
-        # 模擬面試
-        responses = simulate_interview(selected_questions, user_answer_callback)
-
-        # 分析用戶的回答
-        for idx, response in enumerate(responses):
-            # 假設每個回答的分析結果會存放到 analysis 中
-            analysis_results = process_interview_answer(response['response'])  # 使用面試教練進行分析
-
-            # 進一步將分析結果與建議添加到回應
-            response['analysis'] = analysis_results['analysis']
-            response['advice'] = analysis_results['advice']
-
-    # 渲染模板並傳遞問題、回應和選擇的職位與面試類型
-    return render_template('interview_mcp.html', questions=selected_questions, responses=responses, job_title=job_title, interview_type=interview_type)
+    try:
+        reply, analysis = handle_chat(user_msg)
+        return jsonify({'reply': reply, 'analysis': analysis})
+    except Exception as e:
+        return jsonify({'reply': f"⚠️ 發生錯誤：{str(e)}", 'analysis': ''})
 
 
 @app.route('/generate_transcript', methods=['POST'])
@@ -223,6 +177,7 @@ def gradio_analysis():
     return "Gradio 介面正在啟動..."  # 你可以根據需要自定義這個回應
 
 '''
+#In[2]:Interview Analysis:
 
 @app.route('/gradio_analysis', methods=['GET', 'POST'])
 def gradio_analysis():
@@ -240,7 +195,47 @@ def gradio_analysis():
     # 頁面加載時顯示分析頁面，並讓用戶上傳 CSV 文件
     return render_template('gradio_analysis.html')  # 返回 Gradio 分析頁面
 
-# In[2]:Saving Jar
+# 配置上傳文件夾及允許的文件擴展名
+UPLOAD_FOLDER = 'uploads'
+ALLOWED_EXTENSIONS = {'csv'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# 確保上傳文件夾存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# 檢查文件擴展名是否被允許
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route('/interview_analysis', methods=['GET', 'POST'])
+def interview_analysis():
+    if request.method == 'POST':
+        # 處理文件上傳
+        if 'csv_file' not in request.files:
+            return '沒有檔案', 400
+        file = request.files['csv_file']
+        if file.filename == '':
+            return '沒有選擇檔案', 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+            
+            user_prompt = request.form['user_prompt']
+            # 執行分析
+            result = analyze_interview(file_path, user_prompt)
+            # 返回結果
+            return render_template('analysis_result.html', result=result)
+
+    return render_template('analysis.html')
+
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+# In[3]:Saving Jar
 
 # MySQL
 app.config['MYSQL_HOST'] = DB_HOST
@@ -279,7 +274,32 @@ def add_saving_goal():
         # 關閉游標
         cursor.close()
 
+#In[] Reminders:
+
+# 取得所有提醒事項
+@app.route('/reminders', methods=['GET'])
+def get_reminders():
+    return jsonify(get_all_reminders())
+
+# 新增提醒事項
+@app.route('/reminders', methods=['POST'])
+def add_reminder_api():
+    data = request.json
+    content = data.get('content')
+    date = data.get('date')
+    if not content or not date:
+        return jsonify({'error': '請提供提醒內容與日期'}), 400
+    new_reminder = add_reminder(content, date)
+    return jsonify(new_reminder), 201
+
+# 刪除提醒事項
+@app.route('/reminders/<rid>', methods=['DELETE'])
+def delete_reminder_api(rid):
+    delete_reminder(rid)
+    return jsonify({'success': True})
+
 
 # In[]: main:
 if __name__ == '__main__':
+
     app.run(debug=True, port=5000)  # 使用端口 5000 啟動 Flask 應用

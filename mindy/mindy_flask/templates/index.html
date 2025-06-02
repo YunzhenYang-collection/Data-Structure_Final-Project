@@ -105,34 +105,38 @@
         </div>
 
         <div class="dashboard-container">
-            <div class="reminder-section">
-                <div class="reminder-card">
-                    <div class="reminder-circle">12</div>
-                    <div class="card-body">
-                        <div class="card-header">Reminder 1</div>
-                        <div>事項描述 1</div>
-                    </div>
-                </div>
-            </div>
+            <div class="reminder-section" id="reminder-section">
+            <button class="btn btn-outline-success mb-2" id="add-reminder-btn">+ 新增提醒</button>
+            <!-- 新增提醒表單（預設隱藏） -->
+            <form id="reminder-form" style="display:none;" class="mb-2">
+                <input type="text" id="reminder-content" placeholder="提醒事項" class="form-control mb-1" required>
+                <input type="date" id="reminder-date" class="form-control mb-1" required>
+                <button type="submit" class="btn btn-primary btn-sm">確認</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="cancel-reminder-btn">取消</button>
+            </form>
+            <!-- JS 動態插入 reminder 卡片 -->
+        </div>
+
 
             <div class="right-card-section">
                 <div class="card">
                     <div class="card-header">Interview Coach</div>
                     <div class="card-body">
                         <!-- 使用 a 標籤來開啟新分頁 -->                                             
-                        <!--a href="{{ url_for('interview') }}" class="btn btn-primary" target="_blank">開始模擬面試</a-->
-                        <a href="{{ url_for('interview_mcp') }}" class="btn btn-primary" target="_blank">開始模擬面試</a>
+                        
+                        <a href="{{ url_for('interview') }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer">開始模擬面試</a>
+
                         <br><br>
-                        <a href="{{ url_for('gradio_analysis') }}" class="btn btn-primary" target="_blank">開始面試分析</a>
+                        <!--a href="{{ url_for('gradio_analysis') }}" class="btn btn-primary" target="_blank">開始面試分析</a-->
                     </div>
                 </div>
-                <div class="card">
+                <!--div class="card">
                     <div class="card-header">Student Assistant</div>
                     <div class="card-body">
                         <p>學生助手功能</p>
                     </div>
-                </div>
-                
+                </div-->
+
                 <div class="card">
                     <div class="card-header">Saving Jar</div>
                     <div class="card-body">
@@ -252,18 +256,18 @@
         }
     
         // 當點擊“摘要”按鈕時，請求摘要並顯示
-        function getSummary(title) {
-            fetch(`/get_news_summary?title=${encodeURIComponent(title)}`)
-                .then(response => response.json())
-                .then(data => {
-                    const summaryDiv = document.getElementById(`summary-${title}`);
-                    summaryDiv.innerHTML = `<strong>摘要：</strong><p>${data.summary}</p>`;
-                    summaryDiv.style.display = 'block';
-                })
-                .catch(error => {
-                    console.error('Error fetching summary:', error);
-                });
-        }
+        // function getSummary(title) {
+        //     fetch(`/get_news_summary?title=${encodeURIComponent(title)}`)
+        //         .then(response => response.json())
+        //         .then(data => {
+        //             const summaryDiv = document.getElementById(`summary-${title}`);
+        //             summaryDiv.innerHTML = `<strong>摘要：</strong><p>${data.summary}</p>`;
+        //             summaryDiv.style.display = 'block';
+        //         })
+        //         .catch(error => {
+        //             console.error('Error fetching summary:', error);
+        //         });
+        // }
        
     </script>
     
@@ -336,6 +340,56 @@
             }
         }
     </script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>    
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function loadReminders() {
+            fetch('/reminders').then(r=>r.json()).then(data => {
+                const sec = document.getElementById('reminder-section');
+                // 先清掉所有舊卡片（不動按鈕與表單）
+                Array.from(sec.children).forEach(child => {
+                    if (child.classList && child.classList.contains('reminder-card')) child.remove();
+                });
+                data.forEach(r => {
+                    const card = document.createElement('div');
+                    card.className = 'reminder-card';
+                    card.innerHTML = `
+                        <div class="reminder-circle">${r.date.slice(8,10)}</div>
+                        <div class="card-body">
+                            <div class="card-header">${r.content}</div>
+                            <div>${r.date}</div>
+                        </div>
+                        <button class="btn btn-danger btn-sm ms-auto" onclick="deleteReminder('${r.rid}')">刪除</button>
+                    `;
+                    sec.appendChild(card);
+                });
+            });
+        }
+        function deleteReminder(rid) {
+            fetch('/reminders/' + rid, { method: 'DELETE' })
+                .then(()=>loadReminders());
+        }
+        document.getElementById('add-reminder-btn').onclick = function() {
+            document.getElementById('reminder-form').style.display = 'block';
+        };
+        document.getElementById('cancel-reminder-btn').onclick = function() {
+            document.getElementById('reminder-form').style.display = 'none';
+        };
+        document.getElementById('reminder-form').onsubmit = function(e) {
+            e.preventDefault();
+            const content = document.getElementById('reminder-content').value;
+            const date = document.getElementById('reminder-date').value;
+            fetch('/reminders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, date })
+            }).then(()=> {
+                document.getElementById('reminder-form').reset();
+                document.getElementById('reminder-form').style.display = 'none';
+                loadReminders();
+            });
+        };
+        document.addEventListener('DOMContentLoaded', loadReminders);
+        </script>
+    
 </body>
 </html>

@@ -14,7 +14,8 @@ MODEL_PROVIDER = os.getenv('MODEL_PROVIDER', 'gemini')
 
 # ✅ API KEY 設定
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+HF_API_KEY = os.getenv('HF_API_KEY', '')
 
 # ✅ 其他可擴充設定
 DEBUG_MODE = os.getenv('DEBUG_MODE', 'false').lower() == 'true'

@@ -1,80 +1,79 @@
+# interview_mcp.py
+import os
 import asyncio
-import json
-import pandas as pd
+from dotenv import load_dotenv
+from google.genai import client as genai_client
 
-from mcp import ModelClient, ProtocolAgent
+load_dotenv()
 
-# ✅ 面試專家與面試教練的分析流程
-async def process_interview(user_id, user_answers: pd.DataFrame):
-    model_client = ModelClient()
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY 未設定")
 
-    # 創建面試專家和 AI 教練代理
-    interview_expert = ProtocolAgent(
-        name="interview_expert",
-        role="面試專家",
-        model_client=model_client
-    )
-    coaching_agent = ProtocolAgent(
-        name="ai_coach",
-        role="AI 教練",
-        model_client=model_client
-    )
+class ModelClient:
+    def __init__(self, model="gemini-2.0-flash"):
+        self.model = model
+        self.client = genai_client.Client(api_key=GEMINI_API_KEY)
 
-    display_names = {
-        "interview_expert": "面試專家",
-        "ai_coach": "AI 教練"
-    }
+    async def generate(self, messages: list):
+        prompt = "\n".join(messages)
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt
+        )
+        return response.text.strip()
 
-    # 假設 user_answers 是 DataFrame，其中每一列是用戶的回答
-    records = user_answers.to_dict(orient='records')
-    if len(records) > 5:
-        prompt_records = json.dumps(records[:5], ensure_ascii=False, indent=2, default=str) + "\n... (以下省略)"
-    else:
-        prompt_records = json.dumps(records, ensure_ascii=False, indent=2, default=str)
+class ProtocolAgent:
+    def __init__(self, name, role, model_client: ModelClient, initial_prompt=None):
+        self.name = name
+        self.role = role
+        self.model_client = model_client
+        self.history = []
+        if initial_prompt:
+            # 初始化時放入預設背景+對話
+            self.history.append(f"[system] {initial_prompt}")
 
-    prompt = (
-        f"目前正在處理用戶 {user_id} 的面試回答，共 {len(user_answers)} 則。\n"
-        f"回答內容（僅顯示前 5 筆）：\n{prompt_records}\n\n"
-        "請仔細分析上述回答，找出用戶的情緒與表達模式，並根據你的分析生成一段面試建議，內容必須包含：\n"
-        "1. 回答中表達的情緒與思考模式\n"
-        "2. 實際可行的改進建議\n"
-        "3. AI 教練如何提供個性化的面試建議\n\n"
-        "請注意：請僅生成全新內容，不要重複上述提示。請在回覆最後直接輸出最終建議，格式必須以『最終建議：』開頭。"
-    )
+    async def act(self, user_input: str):
+        self.history.append(f"[user] {user_input}")
+        context = self.history.copy()
 
-    agents = [interview_expert, coaching_agent]
-    final_recommendation = None
+        response = await self.model_client.generate(context)
+        self.history.append(f"[{self.name}] {response}")
+        return response
 
-    analysis_results = []
+# 預設面試專家背景及起始對話
+default_initial_prompt = (
+    "你是面試專家，請扮演一位專業面試教練，"
+    "會引導應徵者作自我介紹並根據回答持續提問。"
+    "請開始面試，使用者第一個輸入皆為自我介紹。"
+)
 
+# 建立 ModelClient
+model_client = ModelClient()
+
+# 建立兩個 Agent，帶入初始 prompt 只給 coach
+agent1 = ProtocolAgent("ai_coach", "AI 教練", model_client, initial_prompt=default_initial_prompt)
+agent2 = ProtocolAgent("analysis_expert", "對話分析專家", model_client)
+
+def run_async(coro):
     try:
-        for _ in range(6):  # 最多 6 輪互動
-            for agent in agents:
-                response = await agent.act(prompt)
-                display_name = display_names.get(agent.name, agent.name)
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
 
-                if len(response) > 1500:
-                    formatted_text = response[:1500] + "... (內容過長)"
-                else:
-                    formatted_text = response
+    if loop and loop.is_running():
+        import concurrent.futures
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        return future.result()
+    else:
+        return asyncio.run(coro)
 
-                analysis_results.append({
-                    'agent': display_name,
-                    'response': formatted_text
-                })
+def handle_chat(user_message: str) -> tuple[str, str]:
+    # ai_coach 根據用戶訊息產生面試回覆
+    reply = run_async(agent1.act(user_message))
 
-                if "最終建議：" in response:
-                    final_recommendation = response.split("最終建議：")[-1].strip()
-                    analysis_results.append({'agent': '最終建議', 'response': final_recommendation})
-                    return analysis_results  # 提前結束
-    except asyncio.exceptions.CancelledError:
-        pass
+    # analysis_expert 根據 coach 回覆給出建議
+    # 這裡用 coach 最新回覆作為分析內容
+    analysis = run_async(agent2.act(reply))
 
-    return analysis_results  # 返回最終的分析結果
-
-
-async def run_interview_analysis(user_id, user_answers: pd.DataFrame):
-    """
-    啟動分析並返回最終結果
-    """
-    return await process_interview(user_id, user_answers)
+    return reply, analysis

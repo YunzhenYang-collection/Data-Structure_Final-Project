@@ -49,8 +49,8 @@ def fetch_news_by_topic(topic_key):
         browser = p.chromium.launch(headless=True)  # headless=True 不顯示瀏覽器界面
         page = browser.new_page()
         page.goto(url)
-        page.goto(url, timeout=60000, wait_until='load')  # 增加超時時間並等待頁面加載完成
-        page.wait_for_timeout(6000)  # 等待頁面加載       
+        page.goto(url, timeout=12000, wait_until='load')  # 增加超時時間並等待頁面加載完成
+        page.wait_for_timeout(12000)  # 等待頁面加載       
                
 
         try:

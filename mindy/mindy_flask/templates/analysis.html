@@ -1,0 +1,23 @@
+<!-- analysis.html -->
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>面試分析</title>
+</head>
+<body>
+    <h1>面試對話分析</h1>
+    <p>請上傳您的面試對話 CSV 檔案並提供分析指令。</p>
+    
+    <form action="{{ url_for('interview_analysis') }}" method="POST" enctype="multipart/form-data">
+        <label for="csv_file">上傳面試 CSV 檔案:</label>
+        <input type="file" name="csv_file" id="csv_file" required><br><br>
+        
+        <label for="user_prompt">分析指令:</label><br>
+        <textarea name="user_prompt" id="user_prompt" rows="10" cols="50" placeholder="請提供分析指令" required></textarea><br><br>
+        
+        <input type="submit" value="開始分析">
+    </form>
+</body>
+</html>
